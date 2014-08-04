@@ -12,7 +12,7 @@ publishArtifact in Test := false
 
 //publishTo := Some(Resolver.url("repo", new URL("http://"))(Resolver.ivyStylePatterns))
 
-sbtVersion in Global := "0.13.5"
+//sbtVersion in Global := "0.13.5"
 
 libraryDependencies ++= Seq(
 )
