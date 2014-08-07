@@ -1,5 +1,7 @@
 package co.movio.sbt
 
+import java.lang.ClassLoader
+
 import sbt.Classpaths.managedJars
 import sbt.Classpaths.managedJars
 import sbt.Defaults._
@@ -12,7 +14,13 @@ import sbt.complete.Parser
 
 object DbTasksPlugin extends DbTasks
 trait DbTasks extends Plugin {
-  case class DbSchema(port: Int, project: String, ddl: String)
+
+  case class DbSchema(
+    port: Int,
+    project: String,
+    ddl: String,
+    createIdbSchema: Boolean = false,
+    customSqlFiles: String = "")
 
   val dbClean = TaskKey[Unit]("dbclean")
 
@@ -97,14 +105,23 @@ trait DbTasks extends Plugin {
       // Append schema info
       val schema = "custom." + db.ddl + ".schemas=" + schemas.mkString(",") + "\n"
       val location = "custom." + db.ddl + ".locations=" + locations.mkString(",") + "\n"
+      val port = "custom." + db.ddl + ".port=" + db.port + "\n"
       IO.append(flywayConf, schema)
       IO.append(flywayConf, location)
+      IO.append(flywayConf, port)
       IO.append(flywayConf, "custom." + db.ddl + ".dbtest-md5=" + jarMd5 + "\n")
+
+      // Hack to setup infinidb schema
+      val customSchema = if (db.createIdbSchema) {
+        schemas(0).replaceFirst("^vc_", "idb_") + ":3307"
+      } else ""
 
       // Little hack to send the correct classloader to our class
       val clazz = loader.loadClass("atm.db.SbtToolsInit")
-      val method = clazz.getDeclaredMethod("init", classOf[java.lang.ClassLoader], classOf[String])
-      method.invoke(clazz.newInstance, loader, db.ddl)
+      val method = clazz.getDeclaredMethod("init",
+        classOf[java.lang.ClassLoader], classOf[String], classOf[String], classOf[String])
+
+      method.invoke(clazz.newInstance, loader, db.ddl, db.customSqlFiles, customSchema)
       println("Finished setting up DB")
     }
   }
@@ -123,4 +140,3 @@ trait DbTasks extends Plugin {
       }
   }
 }
-
