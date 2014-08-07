@@ -111,6 +111,11 @@ trait MovioDependenciesPlugin {
   def getModuleOrder(deps: Map[String, Set[String]]): List[String] =
     addModules(deps.keySet, List(), List(), deps).right.get
 
+  def getModulesBelowMe(module:String, deps: Map[String, Set[String]]): List[String] = {
+    val allDeps = addModules(deps.keySet, List(), List(), deps).right.get
+    allDeps.takeWhile(s => s != module)
+  }
+
   def addModule(module: String, order: List[String], path: List[String], deps: Map[String, Set[String]]): Either[Exception, List[String]] =
     if (path.contains(module)) Left(
       new Exception("Circular dependency while adding module '" + module + "'! Path: " + path.reverse.reduceLeft(_ + " <-" + _)))
@@ -247,9 +252,11 @@ trait MovioDependenciesPlugin {
 
   lazy val doAbove = InputKey[Any]("doAbove", "Performs a given commands for its dependencies and itself, in proper order.")
   lazy val doBelow = InputKey[Any]("doBelow", "Performs a given commands on itself and modules that depend on it, in proper order.")
+  lazy val resume = InputKey[Any]("resume", "Performs a given command on all modules after this module in the full build process, in proper order.")
   lazy val doAboveBelowSettings = Seq(
     doAbove <<= doOnModulesTask { module ⇒ getWhatIDependOn(module, depsMap_all).reverse :+ module },
-    doBelow <<= doOnModulesTask { module ⇒ module :: getWhatDependsOnMe(module, depsMap_all) }
+    doBelow <<= doOnModulesTask { module ⇒ module :: getWhatDependsOnMe(module, depsMap_all) },
+    resume <<= doOnModulesTask { module ⇒ getModulesBelowMe(module, depsMap_all).reverse }
   )
   lazy val doAll = InputKey[Any]("doAll", "Performs a given command for all modules, in proper order.")
   lazy val doAllSettings = Seq(
