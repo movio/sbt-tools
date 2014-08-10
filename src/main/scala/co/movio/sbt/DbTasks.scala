@@ -64,10 +64,11 @@ trait DbTasks extends Plugin {
     // Only run if files have changed
     // md5 files in backend/src/main/resources/db-bonc/migration/
     //              backend/src/main/resources/db-bonc/next-release/
-    val migrationFiles = IO.listFiles(base / ("../" + db.project + "/src/main/resources/db-" + db.ddl + "/migration"))
-    val nextReleaseFiles = IO.listFiles(base / ("../" + db.project + "/src/main/resources/db-" + db.ddl + "next-release"))
+    val noDirs = new java.io.FileFilter { override def accept(file: java.io.File): Boolean = !file.isDirectory() }
+    val migrationFiles = IO.listFiles(noDirs)(base / ("../" + db.project + "/src/main/resources/db-" + db.ddl + "/migration"))
+    val nextReleaseFiles = IO.listFiles(noDirs)(base / ("../" + db.project + "/src/main/resources/db-" + db.ddl + "next-release"))
     val allFiles = migrationFiles ++ nextReleaseFiles
-    val byteList = allFiles.map(IO.readBytes)
+    val byteList = allFiles map IO.readBytes
     val bytes = Array.concat(byteList: _*)
 
     val jarMd5 = java.security.MessageDigest.getInstance("MD5").digest(bytes).map("%02X" format _).mkString
