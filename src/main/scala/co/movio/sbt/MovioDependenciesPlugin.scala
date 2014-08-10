@@ -253,10 +253,12 @@ trait MovioDependenciesPlugin {
   lazy val doAbove = InputKey[Any]("doAbove", "Performs a given commands for its dependencies and itself, in proper order.")
   lazy val doBelow = InputKey[Any]("doBelow", "Performs a given commands on itself and modules that depend on it, in proper order.")
   lazy val resume = InputKey[Any]("resume", "Performs a given command on all modules after this module in the full build process, in proper order.")
+  lazy val retry = InputKey[Any]("retry", "Performs a given command on all modules including and after this module in the full build process, in proper order.")
   lazy val doAboveBelowSettings = Seq(
     doAbove <<= doOnModulesTask { module ⇒ getWhatIDependOn(module, depsMap_all).reverse :+ module },
     doBelow <<= doOnModulesTask { module ⇒ module :: getWhatDependsOnMe(module, depsMap_all) },
-    resume <<= doOnModulesTask { module ⇒ getModulesBelowMe(module, depsMap_all).reverse }
+    resume <<= doOnModulesTask { module ⇒ getModulesBelowMe(module, depsMap_all).reverse },
+    retry <<= doOnModulesTask { module ⇒ (getModulesBelowMe(module, depsMap_all) :+ module).reverse }
   )
   lazy val doAll = InputKey[Any]("doAll", "Performs a given command for all modules, in proper order.")
   lazy val doAllSettings = Seq(
