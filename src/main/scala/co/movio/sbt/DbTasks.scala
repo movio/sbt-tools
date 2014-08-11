@@ -52,6 +52,20 @@ trait DbTasks extends Plugin {
 
           dbSchemas foreach { initSchema(_, base, flywayConf, includeNextReleaseMigrations, numSchemas, loader) }
         }
+    },
+    dbClean <<= (baseDirectory, streams, testLoader in Test) map {
+      (base, streams, loader) ⇒
+        {
+          streams.log.info("Note: this does not drop schemas in your MySQL.")
+          val propsName = "flyway.properties"
+          val flywayConf = base / ".." / propsName
+          if (flywayConf.exists) {
+            streams.log.info("Removing flyway.properties...")
+            IO.delete(flywayConf)
+          } else {
+            streams.log.info("flyway.properties already deleted.")
+          }
+        }
     }
   )
 
@@ -125,19 +139,5 @@ trait DbTasks extends Plugin {
       method.invoke(clazz.newInstance, loader, db.ddl, db.customSqlFiles, customSchema)
       println("Finished setting up DB")
     }
-  }
-  dbClean <<= (baseDirectory, streams, testLoader in Test) map {
-    (base, streams, loader) ⇒
-      {
-        streams.log.info("Note: this does not drop schemas in your MySQL.")
-        val propsName = "flyway.propertie"
-        val flywayConf = base / ".." / propsName
-        if (flywayConf.exists) {
-          streams.log.info("Removing flyway.properties...")
-          IO.delete(flywayConf)
-        } else {
-          streams.log.info("flyway.properties already deleted.")
-        }
-      }
   }
 }
