@@ -111,9 +111,9 @@ trait MovioDependenciesPlugin {
   def getModuleOrder(deps: Map[String, Set[String]]): List[String] =
     addModules(deps.keySet, List(), List(), deps).right.get
 
-  def getModulesBelowMe(module:String, deps: Map[String, Set[String]]): List[String] = {
+  def getModulesBelowMe(module: String, deps: Map[String, Set[String]]): List[String] = {
     val allDeps = addModules(deps.keySet, List(), List(), deps).right.get
-    allDeps.takeWhile(s => s != module)
+    allDeps.takeWhile(s ⇒ s != module)
   }
 
   def addModule(module: String, order: List[String], path: List[String], deps: Map[String, Set[String]]): Either[Exception, List[String]] =
@@ -253,16 +253,22 @@ trait MovioDependenciesPlugin {
   lazy val doAbove = InputKey[Any]("doAbove", "Performs a given commands for its dependencies and itself, in proper order.")
   lazy val doBelow = InputKey[Any]("doBelow", "Performs a given commands on itself and modules that depend on it, in proper order.")
   lazy val resume = InputKey[Any]("resume", "Performs a given command on all modules after this module in the full build process, in proper order.")
+  lazy val resumeUntil = InputKey[Any]("resumeUntil", "Performs a given command on all modules after this module in the full build process, in proper order. Stops at the module with first parameter")
   lazy val retry = InputKey[Any]("retry", "Performs a given command on all modules including and after this module in the full build process, in proper order.")
+  lazy val retryUntil = InputKey[Any]("retryUntil", "Performs a given command on all modules including and after this module in the full build process, in proper order. Stops at the module with first parameter")
   lazy val doAboveBelowSettings = Seq(
     doAbove <<= doOnModulesTask { module ⇒ getWhatIDependOn(module, depsMap_all).reverse :+ module },
     doBelow <<= doOnModulesTask { module ⇒ module :: getWhatDependsOnMe(module, depsMap_all) },
     resume <<= doOnModulesTask { module ⇒ getModulesBelowMe(module, depsMap_all).reverse },
-    retry <<= doOnModulesTask { module ⇒ (getModulesBelowMe(module, depsMap_all) :+ module).reverse }
+    resumeUntil <<= doOnModulesUntilTask { module ⇒ getModulesBelowMe(module, depsMap_all).reverse },
+    retry <<= doOnModulesTask { module ⇒ (getModulesBelowMe(module, depsMap_all) :+ module).reverse },
+    retryUntil <<= doOnModulesUntilTask { module ⇒ (getModulesBelowMe(module, depsMap_all) :+ module).reverse }
   )
   lazy val doAll = InputKey[Any]("doAll", "Performs a given command for all modules, in proper order.")
+  lazy val doAllUntil = InputKey[Any]("doAllUntil", "Performs a given command for all modules, but stops before the first argument: eg doAllUntil core test.")
   lazy val doAllSettings = Seq(
-    doAll <<= doOnModulesTask { projectDependencies ⇒ getModuleOrder(depsMap_all).reverse }
+    doAll <<= doOnModulesTask { projectDependencies ⇒ getModuleOrder(depsMap_all).reverse },
+    doAllUntil <<= doOnModulesUntilTask { projectDependencies ⇒ getModuleOrder(depsMap_all).reverse }
   )
 
   lazy val readyToPush = TaskKey[Any]("readyToPush", "Alias for `doAll testCompile publishLocal`.")
@@ -286,7 +292,24 @@ trait MovioDependenciesPlugin {
       }
     }
 
-  def evaluateTasksOnModules(modules: List[String], tasks: List[String], state: State, structure: BuildStructure, streams: TaskStreams): Boolean = modules match {
+  def doOnModulesUntilTask(getModules: String ⇒ List[String]): Initialize[InputTask[Any]] =
+    InputTask(doUntilParser) { (argTask: TaskKey[(String, Seq[String])]) ⇒
+      (projectID, streams, argTask, buildStructure, state) map {
+        (module, streams, args, structure, state) ⇒
+          val excludeFrom = args._1
+          val tasks = args._2
+
+          val allModules: List[String] = getModules(module.name)
+
+          val modules = allModules.takeWhile(_ != excludeFrom)
+          println(excludeFrom )
+          println(modules)
+          val success = evaluateTasksOnModules(modules, tasks, state, structure, streams)
+          if (!success) fail("A task failed - stopping.")
+      }
+    }
+
+  def evaluateTasksOnModules(modules: Seq[String], tasks: Seq[String], state: State, structure: BuildStructure, streams: TaskStreams): Boolean = modules match {
     case head :: tail ⇒
       if (evaluateTasksOnModule(head, tasks, state, structure, streams))
         evaluateTasksOnModules(tail, tasks, state, structure, streams)
@@ -294,7 +317,7 @@ trait MovioDependenciesPlugin {
     case Nil ⇒ true
   }
 
-  def evaluateTasksOnModule(module: String, tasks: List[String], state: State, structure: BuildStructure, streams: TaskStreams): Boolean = tasks match {
+  def evaluateTasksOnModule(module: String, tasks: Seq[String], state: State, structure: BuildStructure, streams: TaskStreams): Boolean = tasks match {
     case head :: tail ⇒
       if (evaluateTaskOnModule(module, head, state, structure, streams))
         evaluateTasksOnModule(module, tail, state, structure, streams)
@@ -304,14 +327,27 @@ trait MovioDependenciesPlugin {
 
   val doParser: State ⇒ Parser[Seq[String]] = (state: State) ⇒
     token(
-      (' ' ~> "clean") |
-        (' ' ~> "compile") |
-        (' ' ~> "publishLocal") |
-        (' ' ~> "testCompile") |
-        (' ' ~> "test") |
-        (' ' ~> "list") |
-        (' ' ~> "doNotEverEverDoThisLocallyOnlyForUseWithJenkins")
+      (Space ~> "clean") |
+        (Space ~> "compile") |
+        (Space ~> "publishLocal") |
+        (Space ~> "testCompile") |
+        (Space ~> "test") |
+        (Space ~> "list") |
+        (Space ~> "doNotEverEverDoThisLocallyOnlyForUseWithJenkins")
     ).+
+
+  val doUntilParser: State ⇒ Parser[(String, Seq[String])] = (state: State) ⇒
+    Space ~> StringBasic.examples("module") ~ 
+      token(
+     //(Space ~> StringBasic.examples("module")) |
+        (Space ~> "clean") |
+          (Space ~> "compile") |
+          (Space ~> "publishLocal") |
+          (Space ~> "testCompile") |
+          (Space ~> "test") |
+          (Space ~> "list") |
+          (Space ~> "doNotEverEverDoThisLocallyOnlyForUseWithJenkins")
+        ).+
 
   def evaluateTaskOnModule(module: String, task: String, state: State, structure: BuildStructure, streams: TaskStreams): Boolean = {
     object tasks {
