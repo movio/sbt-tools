@@ -80,7 +80,7 @@ trait DbTasks extends Plugin {
     //              backend/src/main/resources/db-bonc/next-release/
     val noDirs = new java.io.FileFilter { override def accept(file: java.io.File): Boolean = !file.isDirectory() }
     val migrationFiles = IO.listFiles(noDirs)(base / ("../" + db.project + "/src/main/resources/db-" + db.ddl + "/migration"))
-    val nextReleaseFiles = IO.listFiles(noDirs)(base / ("../" + db.project + "/src/main/resources/db-" + db.ddl + "next-release"))
+    val nextReleaseFiles = IO.listFiles(noDirs)(base / ("../" + db.project + "/src/main/resources/db-" + db.ddl + "/next-release"))
     val allFiles = migrationFiles ++ nextReleaseFiles
     val byteList = allFiles map IO.readBytes
     val bytes = Array.concat(byteList: _*)
@@ -93,7 +93,7 @@ trait DbTasks extends Plugin {
 
     val locations =
       if (includeNextReleaseMigrations) Seq("db-" + db.ddl + "/migration", "db-" + db.ddl + "/next-release")
-      else Seq("db-" + db.ddl + "/migration")
+      else Seq(migrationFiles.head.getParent)
 
     val dbAlreadyCreated: Boolean = (
       for {
