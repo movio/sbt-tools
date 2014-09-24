@@ -20,7 +20,8 @@ trait DbTasks extends Plugin {
     project: String,
     ddl: String,
     createIdbSchema: Boolean = false,
-    customSqlFiles: String = "")
+    customSqlFiles: String = "",
+    useClasspath: java.lang.Boolean = true)
 
   val dbClean = TaskKey[Unit]("dbclean")
 
@@ -91,9 +92,10 @@ trait DbTasks extends Plugin {
     val oldMd5 = lines find (_ startsWith ("custom." + db.ddl + ".dbtest-md5=")) map (_.dropWhile(_ != '=').drop(1))
     val oldLocations = lines find (_ startsWith ("custom." + db.ddl + ".locations=")) map (_.dropWhile(_ != '=').drop(1))
 
-    val locations =
-      if (includeNextReleaseMigrations) Seq("db-" + db.ddl + "/migration", "db-" + db.ddl + "/next-release")
-      else Seq(migrationFiles.head.getParent)
+    val locations = if (db.useClasspath)
+      Seq("db-" + db.ddl + "/migration")
+    else
+      Seq(migrationFiles.head.getParent)
 
     val dbAlreadyCreated: Boolean = (
       for {
@@ -132,11 +134,11 @@ trait DbTasks extends Plugin {
       } else ""
 
       // Little hack to send the correct classloader to our class
-      val clazz = loader.loadClass("atm.db.SbtToolsInit")
+      val clazz = loader.loadClass("movio.dbtools.SbtToolsInit")
       val method = clazz.getDeclaredMethod("init",
-        classOf[java.lang.ClassLoader], classOf[String], classOf[String], classOf[String])
+        classOf[java.lang.ClassLoader], classOf[String], classOf[String], classOf[String], classOf[java.lang.Boolean])
 
-      method.invoke(clazz.newInstance, loader, db.ddl, db.customSqlFiles, customSchema)
+      method.invoke(clazz.newInstance, loader, db.ddl, db.customSqlFiles, customSchema, db.useClasspath)
       println("Finished setting up DB")
     }
   }
