@@ -333,6 +333,8 @@ trait MovioDependenciesPlugin {
         (Space ~> "testCompile") |
         (Space ~> "test") |
         (Space ~> "list") |
+        (Space ~> "update") |
+        (Space ~> "testUpdate") |
         (Space ~> "doNotEverEverDoThisLocallyOnlyForUseWithJenkins")
     ).+
 
@@ -358,6 +360,8 @@ trait MovioDependenciesPlugin {
       val test: ScopedKey[Task[Unit]] = Keys.test.in(Test)
       val publish: ScopedKey[Task[Unit]] = Keys.publish
       val list = "list"
+      val update = Keys.update
+      val testUpdate = Keys.update in Test
     }
 
     val projectRefs = structure.allProjectRefs.map(pr ⇒ pr.project → pr).toMap
@@ -380,6 +384,8 @@ trait MovioDependenciesPlugin {
       case "test" ⇒ evaluateTask(tasks.test)
       case "doNotEverEverDoThisLocallyOnlyForUseWithJenkins" ⇒ evaluateTask(tasks.publish)
       case "list" ⇒ println(module); true
+      case "update" ⇒ evaluateTask(tasks.update)
+      case "testUpdate" ⇒ evaluateTask(tasks.testUpdate)
     }
   }
 }
