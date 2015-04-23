@@ -2,7 +2,7 @@ organization := "co.movio"
 
 name := "sbt-tools"
 
-version := "0.1.0-SNAPSHOT"
+version := "0.1.0"
 
 sbtPlugin := true
 
@@ -16,3 +16,11 @@ publishArtifact in Test := false
 
 libraryDependencies ++= Seq(
 )
+
+publishTo <<= version { (v: String) ⇒
+  val repo = "https://artifactory.movio.co/artifactory/"
+  if (v.trim.endsWith("SNAPSHOT"))
+    Some("movio snapshots" at repo + "libs-snapshot-local")
+  else
+    Some("movio releases" at repo + "libs-release-local")
+}
