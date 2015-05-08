@@ -206,7 +206,7 @@ trait MovioDependenciesPlugin {
     Process("git log -1 --format=%%H %s".format((deps + module + "project").mkString(" "))).!!.trim
 
   def isModuleSnapshot(module: String, deps: Set[String]): Boolean =
-    Process("git status -s %s".format((deps + module).mkString(" "))).lines.nonEmpty
+    Process("git status -s %s".format((deps + module + "project").mkString(" "))).lines.nonEmpty
 
   def movioModule(module: String, test: Boolean = false, intransitive: Boolean = false): ModuleID = {
     val dep = ProjectOrg %% module % getVersion(module)
