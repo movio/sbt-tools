@@ -206,7 +206,7 @@ trait MovioDependenciesPlugin {
     Hash.toHex(Hash(deps.toSeq.sorted.mkString))
 
   def getGitSha(module: String, deps: Set[String]): String =
-    Process("git log -1 --format=%%H %s".format((deps + module).mkString(" "))).!!.trim
+    Process("git log -1 --format=%%H %s".format((deps + module + "project").mkString(" "))).!!.trim
 
   def isModuleSnapshot(module: String, deps: Set[String]): Boolean =
     Process("git status -s %s".format((deps + module).mkString(" "))).lines.nonEmpty
