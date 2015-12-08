@@ -126,17 +126,12 @@ trait DbTasks extends Plugin {
       IO.append(flywayConf, port)
       IO.append(flywayConf, "custom." + db.ddl + ".dbtest-md5=" + jarMd5 + "\n")
 
-      // Hack to setup infinidb schema
-      val customSchema = if (db.createIdbSchema) {
-        schemas(0).replaceFirst("^vc_", "idb_") + ":3307"
-      } else ""
-
       // Little hack to send the correct classloader to our class
       val clazz = loader.loadClass("atm.db.SbtToolsInit")
       val method = clazz.getDeclaredMethod("init",
-        classOf[java.lang.ClassLoader], classOf[String], classOf[String], classOf[String])
+        classOf[java.lang.ClassLoader], classOf[String], classOf[String])
 
-      method.invoke(clazz.newInstance, loader, db.ddl, db.customSqlFiles, customSchema)
+      method.invoke(clazz.newInstance, loader, db.ddl, db.customSqlFiles)
       println("Finished setting up DB")
     }
   }
