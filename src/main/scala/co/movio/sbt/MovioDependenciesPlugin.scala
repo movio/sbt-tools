@@ -1,5 +1,6 @@
 package co.movio.sbt
 
+import scala.util.Try
 import sbt.Classpaths.managedJars
 import sbt.Classpaths.managedJars
 import sbt.Defaults._
@@ -195,12 +196,21 @@ trait MovioDependenciesPlugin {
 
   def getVersion(module: String): String = {
     val deps = getWhatIDependOn(module, depsMap_all).toSet
-    val sha = getGitSha(module, deps).take(7)
+    val sha = getGitTag.getOrElse(getGitSha(module, deps).take(7))
     if (isModuleSnapshot(module, deps))
       sha + "-SNAPSHOT"
     else
       sha
   }
+
+  val nopLogger = new ProcessLogger {
+    override def error(s: => String): Unit = {}
+    override def info(s: => String): Unit = {}
+    override def buffer[T](f: => T): T = f
+  }
+
+  def getGitTag: Option[String] =
+    Try(Process("git describe --tags --exact-match").!!(nopLogger).trim).toOption
 
   def getGitSha(module: String, deps: Set[String]): String =
     Process("git log -1 --format=%%H %s".format((deps + module + "project").mkString(" "))).!!.trim
